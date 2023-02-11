@@ -585,8 +585,55 @@ To add `createdBy` and `updatedBy` to the API response:
 ```
 
 3. Save the `schema.json`.
+4. Open the controller `<collection-name>.js` file for the corresponding API request.
+5. Add the following code, and make sure you replace the `<collection-name>` with the proper name of your collection:
 
-REST API requests using the `populate` parameter that include the `createdBy` or `updatedBy` fields will populate these fields.
+```js
+'use strict';
+
+/**
+ *  post controller
+ */
+
+const { createCoreController } = require('@strapi/strapi').factories;
+
+module.exports = createCoreController('api::<collection-name>.<collection-name>', ({ strapi }) => ({
+  async find(ctx) {
+    // Calling the default core action
+    const { data, meta } = await super.find(ctx);
+
+    const query = strapi.db.query('api::<collection-name>.<collection-name>');
+
+    await Promise.all(
+      data.map(async (item, index) => {
+        const oneItem = await query.findOne({
+          where: {
+            id: item.id,
+          },
+          populate: ['createdBy', 'updatedBy'],
+        });
+        
+        data[index].attributes.createdBy = {
+          id: oneItem.createdBy.id,
+          firstname: oneItem.createdBy.firstname,
+          lastname: oneItem.createdBy.lastname,
+        };
+        data[index].attributes.updatedBy = {
+          id: oneItem.createdBy.id,
+          firstname: oneItem.createdBy.firstname,
+          lastname: oneItem.createdBy.lastname,
+        };
+      })
+    );
+
+    return { data, meta };
+  },
+ }));
+```
+
+REST API requests using the `populate` parameter that include the `createdBy` or `updatedBy` fields will populate these fields now.
+
+[Follow this issue](https://github.com/strapi/strapi/issues/12228) to understand more about this behavior.
 
 :::note
 
